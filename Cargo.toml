@@ -5,5 +5,7 @@ edition = "2021"
 
 [dependencies]
 poise = { version = "0.6.1" }
+serde = "1.0.228"
+reqwest = { version = "0.12.23", features = ["json"] }
 tempfile = "3.23.0"
 tokio = { version = "1.47.1", features = ["full"] }
