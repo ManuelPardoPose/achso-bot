@@ -1,6 +1,9 @@
-use std::{fs::{read, write}};
+use std::fs::{read, write};
 
-use poise::{serenity_prelude::{self as serenity, CreateAttachment, GuildId}, CreateReply};
+use poise::{
+    serenity_prelude::{self as serenity, CreateAttachment},
+    CreateReply,
+};
 use tempfile::tempdir;
 use tokio::process::Command;
 
@@ -39,22 +42,27 @@ $ {} $
             ctx.say(response).await?;
             println!("Fatal Error occured: {e}");
             return Ok(());
-        },
+        }
         Ok(o) => {
             if !o.status.success() {
-                let response = format!("**Invalid Typst Math Syntax**\n{}", String::from_utf8(o.stderr).unwrap_or_default().split("\n").next().unwrap_or_default());
+                let response = format!(
+                    "**Invalid Typst Math Syntax**\n{}",
+                    String::from_utf8(o.stderr)
+                        .unwrap_or_default()
+                        .split("\n")
+                        .next()
+                        .unwrap_or_default()
+                );
                 ctx.say(response).await?;
                 return Ok(());
             }
-        },
+        }
     }
 
     let png = read(&png_path)?;
 
-    ctx.send(
-        CreateReply::default()
-            .attachment(CreateAttachment::bytes(png, "rendered.png"))
-    ).await?;
+    ctx.send(CreateReply::default().attachment(CreateAttachment::bytes(png, "rendered.png")))
+        .await?;
     Ok(())
 }
 
@@ -70,8 +78,7 @@ async fn main() {
         })
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
-                // poise::builtins::register_globally(ctx, &framework.options().commands).await?; // used for deployment
-                poise::builtins::register_in_guild(ctx, &framework.options().commands, GuildId::new(725690997031567421)).await?; // used for dev
+                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 Ok(Data {})
             })
         })
