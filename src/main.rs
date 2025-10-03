@@ -4,6 +4,7 @@ use poise::{
     serenity_prelude::{self as serenity, CreateAttachment},
     CreateReply,
 };
+use serde::Deserialize;
 use tempfile::tempdir;
 use tokio::process::Command;
 
@@ -66,6 +67,74 @@ $ {} $
     Ok(())
 }
 
+#[derive(Deserialize, Debug)]
+struct OWStats {
+    general: GeneralStats,
+}
+
+#[derive(Deserialize, Debug)]
+struct GeneralStats {
+    average: AverageStats,
+    games_lost: i32,
+    games_won: i32,
+    kda: f32,
+    winrate: f32,
+}
+
+#[derive(Deserialize, Debug)]
+struct AverageStats {
+    damage: f32,
+    healing: f32,
+}
+
+/// Get Overwatch Stats of a Player
+#[poise::command(slash_command, prefix_command)]
+async fn owstats(ctx: Context<'_>, #[description = "player"] player: String) -> Result<(), Error> {
+    let player = player.replace('#', "-").replace(' ', "");
+    let resp = match reqwest::get(format!(
+        "https://overfast-api.tekrop.fr/players/{player}/stats/summary"
+    ))
+    .await
+    {
+        Err(e) => {
+            println!("Request Error: {e:?}");
+            return Ok(());
+        }
+        Ok(v) => v,
+    };
+    if let Err(e) = resp.error_for_status_ref() {
+        println!("Request Status: {:?}", e.status());
+        return Ok(());
+    }
+    let json = match resp.json::<OWStats>().await {
+        Err(e) => {
+            println!("Json Parse Error: {e:?}");
+            return Ok(());
+        }
+        Ok(v) => v,
+    };
+    ctx.send(CreateReply::default().content(format!(
+        r#"
+**STATS FOR PLAYER {}**
+📊      **KDA:** {}
+📊      **Winrate:** {}%
+💣      **Average Damage:** {}
+💛      **Average Healing:** {}
+📈      **Games Won:** {}
+📉      **Games Lost:** {}
+        "#,
+        player,
+        json.general.kda,
+        json.general.winrate,
+        json.general.average.damage,
+        json.general.average.healing,
+        json.general.games_won,
+        json.general.games_lost,
+    )))
+    .await?;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() {
     let token = std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN");
@@ -73,7 +142,7 @@ async fn main() {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![math()],
+            commands: vec![math(), owstats()],
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
